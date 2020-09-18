@@ -61,7 +61,9 @@
 !/
       CONTAINS
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE W3IORSOLD ( INXOUT, NDSR, DUMFPI, IMOD, FLRSTRT )
+!JDM      SUBROUTINE W3IORSOLD ( INXOUT, NDSR, DUMFPI, IMOD, FLRSTRT )
+      SUBROUTINE W3IORSOLD ( INXOUT, NDSR, DUMFPI, RSTYPE, IMOD )
+
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -102,6 +104,8 @@
 !/                  (Roberto Padilla-Hernandez & J.H. Alves)
 !/    03-Aug-2020 : Updates so that it can be used to generate HWRF IC 
 !/         This routine was created by taking the production/GFSv16
+!/    18-Sep-2020 : Updates for compiling, needed to hardcode variables 
+!/         and change the interface to match the older style
 !branch and processing it with the following switches: 
 !F90 NCO NOGRB SHRD SCRIP SCRIPNC WRST NC4 PR3 UQ FLX0 SEED ST4 STAB0
 !NL1 BT1 DB1 MLIM TR0 BS0 XX0 RWND WNX1 WNT1 CRX1 CRT1 O0 O1 O2 O3 O4 O5
@@ -245,7 +249,7 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
-      USE W3GDATMD, ONLY: W3SETG, W3SETREF, RSTYPE
+      USE W3GDATMD, ONLY: W3SETG, W3SETREF !JDM, RSTYPE
       USE W3ODATMD, ONLY: W3SETO
 !/
       USE W3GDATMD, ONLY: NX, NY, NSEA, NSEAL, NSPEC, MAPSTA, MAPST2, &
@@ -253,13 +257,13 @@
       USE W3TRIAMD, ONLY: SETUGIOBP
       USE W3WDATMD
       USE W3IDATMD, ONLY: WXN, WYN, W3SETI
-      USE W3IDATMD, ONLY: WXNwrst, WYNwrst
+!JDM      USE W3IDATMD, ONLY: WXNwrst, WYNwrst
       USE W3ODATMD, ONLY: NDSE, NDST, IAPROC, NAPROC, NAPERR, NAPRST, &
                           IFILE => IFILE4, FNMPRE, NTPROC, IOSTYP
 !/
       USE W3SERVMD, ONLY: EXTCDE
-      USE CONSTANTS, only: LPDLIB
-      USE W3PARALL, ONLY: INIT_GET_ISEA, INIT_GET_JSEA_ISPROC
+!JDM      USE CONSTANTS, only: LPDLIB
+!JDM      USE W3PARALL, ONLY: INIT_GET_ISEA, INIT_GET_JSEA_ISPROC
       USE W3GDATMD, ONLY: NK, NTH
 !!!!!/PDLIB    USE PDLIB_FIELD_VEC!, only : UNST_PDLIB_READ_FROM_FILE, UNST_PDLIB_WRITE_TO_FILE
 !
@@ -274,7 +278,8 @@
       INTEGER, INTENT(IN), OPTIONAL :: IMOD
       REAL, INTENT(INOUT)           :: DUMFPI
       CHARACTER, INTENT(IN)         :: INXOUT*(*)
-      LOGICAL, INTENT(IN),OPTIONAL  :: FLRSTRT
+      INTEGER, INTENT(OUT)          :: RSTYPE !JDM add back to argument list
+      LOGICAL  :: FLRSTRT=.FALSE. !JDM set to false
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
@@ -297,6 +302,9 @@
       CHARACTER(LEN=26)       :: IDTST
       CHARACTER(LEN=30)       :: TNAME
       CHARACTER(LEN=15)       :: TIMETAG
+!   Parameters added for backwards porting 
+       REAL, ALLOCATABLE      :: WXNwrst(:,:),WYNwrst(:,:)
+     LOGICAL                  :: LPDLIB = .FALSE.
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -347,6 +355,9 @@
         END IF
 !
       IF ( IAPROC .LE. NAPROC ) VA(:,0) = 0.
+! JDM Added for backwards porting 
+      ALLOCATE(WXNwrst(NX,NY),WYNwrst(NX,NY))
+
 !
       LRECL  = MAX ( LRB*NSPEC ,                                      &
                      LRB*(6+(25/LRB)+(9/LRB)+(29/LRB)+(3/LRB)) )
@@ -362,7 +373,8 @@
       J      = LEN_TRIM(FNMPRE)
 !
 !CHECKPOINT
-      IF ( PRESENT(FLRSTRT) .AND. FLRSTRT) THEN
+      !IF ( PRESENT(FLRSTRT) .AND. FLRSTRT) THEN
+      IF ( FLRSTRT) THEN
           WRITE(TIMETAG,"(i8.8,'.'i6.6)")TIME(1),TIME(2)
 !         FNAME=TIMETAG//'.restart.'//FILEXT(:I)
           FNAME='restart_wave/'//TIMETAG//'.restart.'//FILEXT(:I)
@@ -491,7 +503,7 @@
 !
               IF ( .NOT.IOSFLG .OR. (NAPROC.EQ.1.AND.NAPRST.EQ.1) ) THEN
                   DO JSEA=1, NSEAL
-                    CALL INIT_GET_ISEA(ISEA, JSEA)
+                    ISEA  = JSEA    !JDM CALL INIT_GET_ISEA(ISEA, JSEA)
                     NREC   = ISEA + 2
                     RPOS  = 1_8 + LRECL*(NREC-1_8)
                     WRITEBUFF(:) = 0.
@@ -516,7 +528,7 @@
             ELSE
               VA = 0.
               DO JSEA=1, NSEAL
-                CALL INIT_GET_ISEA(ISEA, JSEA)
+                ISEA  = JSEA    !JDM CALL INIT_GET_ISEA(ISEA, JSEA)
                 NREC   = ISEA + 2
                 RPOS   = 1_8 + LRECL*(NREC-1_8)
                 READ (NDSR,POS=RPOS,ERR=802,IOSTAT=IERR)              &
@@ -743,6 +755,9 @@
         CLOSE ( NDSR )
       END IF
 !
+      IF (ALLOCATED(WXNwrst)) DEALLOCATE(WXNwrst)
+      IF (ALLOCATED(WYNwrst)) DEALLOCATE(WYNwrst)
+
       IF (ALLOCATED(WRITEBUFF)) DEALLOCATE(WRITEBUFF)
 !
       RETURN
