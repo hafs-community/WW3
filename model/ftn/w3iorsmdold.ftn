@@ -106,6 +106,7 @@
 !/         This routine was created by taking the production/GFSv16
 !/    18-Sep-2020 : Updates for compiling, needed to hardcode variables 
 !/         and change the interface to match the older style
+!/         Also make sure that NSEAL is not used, as it is 0 use NSEA
 !branch and processing it with the following switches: 
 !F90 NCO NOGRB SHRD SCRIP SCRIPNC WRST NC4 PR3 UQ FLX0 SEED ST4 STAB0
 !NL1 BT1 DB1 MLIM TR0 BS0 XX0 RWND WNX1 WNT1 CRX1 CRT1 O0 O1 O2 O3 O4 O5
@@ -252,7 +253,7 @@
       USE W3GDATMD, ONLY: W3SETG, W3SETREF !JDM, RSTYPE
       USE W3ODATMD, ONLY: W3SETO
 !/
-      USE W3GDATMD, ONLY: NX, NY, NSEA, NSEAL, NSPEC, MAPSTA, MAPST2, &
+      USE W3GDATMD, ONLY: NX, NY, NSEA, NSPEC, MAPSTA, MAPST2, &
                           GNAME, FILEXT, GTYPE, UNGTYPE
       USE W3TRIAMD, ONLY: SETUGIOBP
       USE W3WDATMD
@@ -502,7 +503,7 @@
 ! Original non-server version writing of spectra
 !
               IF ( .NOT.IOSFLG .OR. (NAPROC.EQ.1.AND.NAPRST.EQ.1) ) THEN
-                  DO JSEA=1, NSEAL
+                  DO JSEA=1, NSEA
                     ISEA  = JSEA    !JDM CALL INIT_GET_ISEA(ISEA, JSEA)
                     NREC   = ISEA + 2
                     RPOS  = 1_8 + LRECL*(NREC-1_8)
@@ -527,7 +528,7 @@
             IF (LPDLIB .and. (GTYPE.eq.UNGTYPE)) THEN
             ELSE
               VA = 0.
-              DO JSEA=1, NSEAL
+              DO JSEA=1, NSEA
                 ISEA  = JSEA    !JDM CALL INIT_GET_ISEA(ISEA, JSEA)
                 NREC   = ISEA + 2
                 RPOS   = 1_8 + LRECL*(NREC-1_8)
